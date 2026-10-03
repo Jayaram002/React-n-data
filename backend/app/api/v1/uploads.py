@@ -18,29 +18,79 @@ from app.services.storage import get_storage_service
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
+import uuid
+from fastapi import Request
+from app.models.consent import ConsentPurpose
+from app.schemas.consent import ConsentWithdrawRequest
+from app.services.consent.consent_service import ConsentService
+
 @router.post("", response_model=UploadOut, status_code=status.HTTP_201_CREATED)
 async def create_upload(
+    request: Request,
     title: str = Form(...),
     description: str = Form(...),
-    ai_training_allowed: bool = Form(True),
-    consent_agreed: bool = Form(...),
+    contributor_rights_agreed: bool = Form(False),
+    platform_license_agreed: bool = Form(False),
+    personal_data_attestation_agreed: bool = Form(False),
+    personal_data_status: str = Form("none"),
+    lawful_basis: Optional[str] = Form(None),
+    lawful_basis_note: Optional[str] = Form(None),
+    ai_training_agreed: bool = Form(False),
+    consent_agreed: Optional[bool] = Form(None),
     consent_version: str = Form("1.0"),
     file: FastAPIBaseUploadFile = File(...),
+    evidence_file: Optional[FastAPIBaseUploadFile] = File(None),
     current_user: User = Depends(require_roles([UserRole.CONTRIBUTOR, UserRole.ADMIN])),
     db: Session = Depends(get_db)
 ):
-    if not consent_agreed:
+    # Backward compatibility with legacy single checkbox
+    if consent_agreed is True:
+        contributor_rights_agreed = True
+        platform_license_agreed = True
+        personal_data_attestation_agreed = True
+
+    # Validate purpose-specific required consents under DPDP Act / Rules 2025
+    if not contributor_rights_agreed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You must agree to the data ownership and consent declaration"
+            detail="You must agree to the data ownership, consent declaration, and licensing terms"
         )
-    
+    if not platform_license_agreed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must grant the platform license to preview, host and license the dataset"
+        )
+    if not personal_data_attestation_agreed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must complete the personal data attestation"
+        )
+
+    if personal_data_status == "contains_personal_data":
+        if not lawful_basis or not lawful_basis.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A valid lawful basis is required when dataset contains personal data"
+            )
+
     file_bytes = await file.read()
     if not file_bytes:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty"
         )
+
+    # Save evidence file if provided (admin-only private evidence)
+    evidence_key = None
+    storage_service = get_storage_service()
+    if evidence_file and evidence_file.filename:
+        evidence_bytes = await evidence_file.read()
+        if evidence_bytes:
+            ext = "." + evidence_file.filename.rsplit(".", 1)[-1].lower() if "." in evidence_file.filename else ".bin"
+            evidence_key = f"evidence/{uuid.uuid4().hex}{ext}"
+            storage_service.save_file(evidence_bytes, evidence_key)
+
+    ai_training_allowed = bool(ai_training_agreed)
 
     try:
         upload = execute_upload_pipeline(
@@ -51,11 +101,41 @@ async def create_upload(
             ai_training_allowed=ai_training_allowed,
             consent_version=consent_version,
             filename=file.filename or "uploaded_data",
-            file_bytes=file_bytes
+            file_bytes=file_bytes,
+            personal_data_status=personal_data_status,
+            lawful_basis=lawful_basis,
+            lawful_basis_note=lawful_basis_note,
+            evidence_storage_key=evidence_key
         )
-        
+
+        ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+
+        # Record required consent records
+        doc1 = ConsentService.get_active_document(db, ConsentPurpose.CONTRIBUTOR_RIGHTS_WARRANTY.value)
+        doc2 = ConsentService.get_active_document(db, ConsentPurpose.PLATFORM_LISTING_LICENSE.value)
+        doc3 = ConsentService.get_active_document(db, ConsentPurpose.THIRD_PARTY_DATA_ATTESTATION.value)
+        if not doc1 or not doc2 or not doc3:
+            ConsentService.seed_default_documents(db)
+            doc1 = ConsentService.get_active_document(db, ConsentPurpose.CONTRIBUTOR_RIGHTS_WARRANTY.value)
+            doc2 = ConsentService.get_active_document(db, ConsentPurpose.PLATFORM_LISTING_LICENSE.value)
+            doc3 = ConsentService.get_active_document(db, ConsentPurpose.THIRD_PARTY_DATA_ATTESTATION.value)
+
+        if doc1:
+            ConsentService.record_consent(db, user_id=current_user.id, upload_id=upload.id, purpose_code=doc1.purpose_code, document_id=doc1.id, document_sha256=doc1.sha256, action="granted", ip=ip, user_agent=user_agent)
+        if doc2:
+            ConsentService.record_consent(db, user_id=current_user.id, upload_id=upload.id, purpose_code=doc2.purpose_code, document_id=doc2.id, document_sha256=doc2.sha256, action="granted", ip=ip, user_agent=user_agent)
+        if doc3:
+            ConsentService.record_consent(db, user_id=current_user.id, upload_id=upload.id, purpose_code=doc3.purpose_code, document_id=doc3.id, document_sha256=doc3.sha256, action="granted", ip=ip, user_agent=user_agent)
+
+        if ai_training_allowed:
+            doc4 = ConsentService.get_active_document(db, ConsentPurpose.AI_TRAINING_USE.value)
+            if doc4:
+                ConsentService.record_consent(db, user_id=current_user.id, upload_id=upload.id, purpose_code=doc4.purpose_code, document_id=doc4.id, document_sha256=doc4.sha256, action="granted", ip=ip, user_agent=user_agent)
+
         # Run AI analysis on the dataset
         run_full_ai_analysis(db, upload.id)
+        db.commit()
         db.refresh(upload)
         return upload
     except ValueError as val_err:
@@ -68,6 +148,38 @@ async def create_upload(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while processing upload: {str(exc)}"
         )
+
+@router.post("/{upload_id}/consent/withdraw")
+def withdraw_consent(
+    upload_id: int,
+    payload: ConsentWithdrawRequest,
+    request: Request,
+    current_user: User = Depends(require_roles([UserRole.CONTRIBUTOR, UserRole.ADMIN])),
+    db: Session = Depends(get_db)
+):
+    upload = db.query(Upload).filter(Upload.id == upload_id).first()
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    if upload.contributor_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
+    rec, effects = ConsentService.withdraw_consent(
+        db=db,
+        user_id=current_user.id,
+        purpose_code=payload.purpose_code,
+        upload_id=upload_id,
+        ip=ip,
+        user_agent=user_agent
+    )
+    return {
+        "status": "withdrawn",
+        "purpose_code": payload.purpose_code,
+        "record_id": rec.id,
+        "effects": effects
+    }
 
 @router.get("/mine", response_model=List[UploadOut])
 def get_my_uploads(

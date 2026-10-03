@@ -3,6 +3,7 @@ import enum
 from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.consent import ConsentDocument
 
 class OrderStatus(str, enum.Enum):
     CREATED = "created"
@@ -53,6 +54,9 @@ class License(Base):
     order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), unique=True, nullable=False)
     terms_version = Column(String, default="1.0", nullable=False)
     type = Column(String, default="non_exclusive_commercial", nullable=False)
+    buyer_agreement_document_id = Column(Integer, ForeignKey("consent_documents.id", ondelete="SET NULL"), nullable=True)
+    buyer_agreement_sha256 = Column(String(64), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     order = relationship("Order", back_populates="license")
+    buyer_agreement = relationship("ConsentDocument", foreign_keys=[buyer_agreement_document_id])

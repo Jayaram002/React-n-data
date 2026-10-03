@@ -142,6 +142,18 @@ def run_full_ai_analysis(db: Session, upload_id: int) -> AIAnalysis:
         if upload.status not in (UploadStatus.FLAGGED, UploadStatus.REJECTED):
             upload.status = UploadStatus.HELD_UNCATEGORIZED
 
+    # DPDP Framework: Health and Finance domains require mandatory admin moderation
+    primary_slug = (classification_out.primary_category or "").lower()
+    if any(k in primary_slug for k in ["health", "finance", "medical", "banking"]):
+        upload.status = UploadStatus.FLAGGED
+        flag = Flag(
+            upload_id=upload.id,
+            reason=f"Upload routed to sensitive domain '{classification_out.primary_category}'. DPDP compliance requires admin moderation before listing.",
+            source="system",
+            status=FlagStatus.OPEN
+        )
+        db.add(flag)
+
     # Update Upload fields
     upload.category_confidence = confidence
     upload.tags = classification_out.tags

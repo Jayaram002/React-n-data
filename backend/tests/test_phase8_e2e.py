@@ -73,6 +73,16 @@ def test_full_marketplace_lifecycle_e2e(client: TestClient, db_session: Session)
     upload_data = upload_res.json()
     upload_id = upload_data["id"]
 
+    # Under DPDP Act / Rules 2025, Health domain routes to moderation queue; admin reviews and approves
+    if upload_data["status"] == UploadStatus.FLAGGED.value:
+        mod_res = client.post(
+            f"/api/v1/admin/moderation/uploads/{upload_id}/action",
+            headers=admin_headers,
+            json={"action": "approve"}
+        )
+        assert mod_res.status_code == 200
+        upload_data = client.get(f"/api/v1/uploads/{upload_id}", headers=contrib_headers).json()
+
     assert upload_data["status"] == UploadStatus.ANALYZED.value
     assert upload_data["ai_min_price"] > 0
     assert upload_data["ai_max_price"] >= upload_data["ai_min_price"]

@@ -45,6 +45,13 @@ class Upload(Base):
     
     consent_version = Column(String, nullable=False, default="1.0")
     consent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    
+    # DPDP Act 2025 personal data attestation & lawful basis
+    personal_data_status = Column(String(50), default="none", nullable=False)  # none, anonymized, contains_personal_data
+    lawful_basis = Column(String(100), nullable=True)  # consent, legitimate_use, contract, legal_obligation
+    lawful_basis_note = Column(Text, nullable=True)
+    evidence_storage_key = Column(String(255), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     contributor = relationship("User", foreign_keys=[contributor_id])

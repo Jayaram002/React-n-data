@@ -16,6 +16,9 @@ export interface User {
   email: string;
   role: Role;
   status: 'active' | 'suspended';
+  terms_accepted_version?: string;
+  privacy_accepted_version?: string;
+  is_adult_confirmed?: boolean;
   contributor_profile?: ContributorProfile;
   agency_profile?: AgencyProfile;
 }
@@ -183,6 +186,10 @@ export interface Upload {
   ai_training_allowed: boolean;
   consent_version: string;
   consent_at: string;
+  personal_data_status?: 'none' | 'anonymized' | 'contains_personal_data';
+  lawful_basis?: string;
+  lawful_basis_note?: string;
+  evidence_storage_key?: string;
   created_at: string;
   file_info?: UploadFile;
   flags?: UploadFlag[];
@@ -192,6 +199,8 @@ export interface License {
   id: number;
   order_id: number;
   terms_version: string;
+  buyer_agreement_document_id?: number;
+  buyer_agreement_sha256?: string;
   type: string;
   created_at: string;
 }

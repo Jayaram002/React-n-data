@@ -23,6 +23,12 @@ class ModerationItemOut(BaseModel):
     flags_count: int
     open_flags: List[Dict[str, Any]]
     ai_total_score: Optional[float] = None
+    personal_data_status: Optional[str] = "none"
+    lawful_basis: Optional[str] = None
+    lawful_basis_note: Optional[str] = None
+    has_evidence: bool = False
+    evidence_download_url: Optional[str] = None
+    consent_records: List[Dict[str, Any]] = []
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

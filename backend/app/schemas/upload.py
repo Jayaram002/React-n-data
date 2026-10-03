@@ -47,6 +47,10 @@ class UploadOut(BaseModel):
     ai_training_allowed: bool
     consent_version: str
     consent_at: datetime
+    personal_data_status: str = "none"
+    lawful_basis: Optional[str] = None
+    lawful_basis_note: Optional[str] = None
+    evidence_storage_key: Optional[str] = None
     created_at: datetime
     file_info: Optional[UploadFileOut] = None
     flags: List[FlagOut] = []

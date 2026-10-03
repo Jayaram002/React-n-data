@@ -29,6 +29,10 @@ class Settings(BaseSettings):
 
     PAYMENT_PROVIDER: str = "mock"
 
+    # DPDP Act Grievance Redressal
+    GRIEVANCE_EMAIL: str = "grievance@reactndata.com"
+    GRIEVANCE_OFFICER_NAME: str = "Aarav Sharma"
+
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

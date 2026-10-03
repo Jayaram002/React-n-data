@@ -20,6 +20,10 @@ import { PurchasesPage } from './pages/agency/Purchases';
 import { AdminModerationPage } from './pages/admin/Moderation';
 import { AdminTaxonomyPage } from './pages/admin/Taxonomy';
 import { AdminAnalyticsPage } from './pages/admin/Analytics';
+import { PrivacySettingsPage } from './pages/PrivacySettingsPage';
+import { TakedownRequestPage } from './pages/TakedownRequestPage';
+import { LegalDocumentPage } from './pages/LegalDocumentPage';
+import { ReacceptanceModal } from './features/consent/ReacceptanceModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +41,7 @@ export const App: React.FC = () => {
         <Router>
           <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <Navbar />
+            <ReacceptanceModal />
             <main className="flex-grow">
               <Routes>
                 {/* Public & Marketplace routes */}
@@ -47,6 +52,12 @@ export const App: React.FC = () => {
                 <Route path="/marketplace" element={<MarketplaceHome />} />
                 <Route path="/marketplace/category/:slug" element={<CategoryBrowse />} />
                 <Route path="/marketplace/:listingId" element={<ListingDetailPage />} />
+
+                {/* Statutory Public DPDP & Legal Notice routes */}
+                <Route path="/takedown" element={<TakedownRequestPage />} />
+                <Route path="/terms" element={<LegalDocumentPage fixedPurposeCode="terms_of_service" />} />
+                <Route path="/privacy" element={<LegalDocumentPage fixedPurposeCode="privacy_notice" />} />
+                <Route path="/legal/:purposeCode" element={<LegalDocumentPage />} />
 
                 {/* Contributor routes */}
                 <Route element={<ProtectedRoute allowedRoles={['contributor', 'admin']} />}>
@@ -60,6 +71,7 @@ export const App: React.FC = () => {
                 <Route element={<ProtectedRoute allowedRoles={['agency', 'contributor', 'admin']} />}>
                   <Route path="/mock-checkout/:orderId" element={<MockCheckoutPage />} />
                   <Route path="/purchases" element={<PurchasesPage />} />
+                  <Route path="/account/privacy" element={<PrivacySettingsPage />} />
                 </Route>
 
                 {/* Admin routes */}
@@ -78,4 +90,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-

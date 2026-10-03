@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { mockPaymentsApi, formatErrorMessage } from '../../api/client';
 import { MockCheckoutInfo } from '../../types';
+import { consentApi } from '../../features/consent/api';
+import { ConsentDocument } from '../../features/consent/types';
+import { ConsentCheckbox } from '../../features/consent/ConsentCheckbox';
 import { 
   CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, 
-  XCircle, ArrowLeft, Loader2, Lock, DollarSign, Sparkles 
+  XCircle, ArrowLeft, Loader2, Lock, DollarSign, Sparkles, Bot, Ban 
 } from 'lucide-react';
 
 export const MockCheckoutPage: React.FC = () => {
@@ -12,6 +15,10 @@ export const MockCheckoutPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [checkoutInfo, setCheckoutInfo] = useState<MockCheckoutInfo | null>(null);
+  const [activeDocs, setActiveDocs] = useState<Record<string, ConsentDocument>>({});
+  const [buyerAgreementAccepted, setBuyerAgreementAccepted] = useState(false);
+  const [agreementError, setAgreementError] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -21,8 +28,16 @@ export const MockCheckoutPage: React.FC = () => {
     if (!orderId) return;
     const fetchCheckout = async () => {
       try {
-        const data = await mockPaymentsApi.getCheckoutDetails(Number(orderId));
+        const [data, docs] = await Promise.all([
+          mockPaymentsApi.getCheckoutDetails(Number(orderId)),
+          consentApi.getActiveDocuments(),
+        ]);
         setCheckoutInfo(data);
+        const map: Record<string, ConsentDocument> = {};
+        docs.forEach((d) => {
+          map[d.purpose_code] = d;
+        });
+        setActiveDocs(map);
       } catch (err: any) {
         setError(formatErrorMessage(err, 'Failed to load checkout details'));
       } finally {
@@ -34,14 +49,20 @@ export const MockCheckoutPage: React.FC = () => {
 
   const handleSimulate = async (result: 'paid' | 'failed' | 'cancelled') => {
     if (!orderId) return;
+    if (result === 'paid' && !buyerAgreementAccepted) {
+      setAgreementError('You must review and accept the Buyer Commercial License Agreement before completing payment.');
+      return;
+    }
+
     setProcessing(true);
     setError('');
+    setAgreementError('');
     setActionStatus(null);
 
     try {
-      const order = await mockPaymentsApi.simulatePayment(Number(orderId), result);
+      await mockPaymentsApi.simulatePayment(Number(orderId), result);
       if (result === 'paid') {
-        setActionStatus('Payment successful! Redirecting to your licensed purchases...');
+        setActionStatus('Payment verified & license minted! Redirecting to purchases...');
         setTimeout(() => {
           navigate('/purchases');
         }, 1200);
@@ -93,7 +114,7 @@ export const MockCheckoutPage: React.FC = () => {
             TEST MODE — Simulated Payment Gateway
           </div>
           <p className="text-xs text-amber-950 font-medium mt-0.5">
-            No real credit cards or bank transfers are charged. This sandbox simulates the 80/20 revenue split, double-entry ledger settlement, and instant automated licensing for the marketplace MVP.
+            No real credit cards or bank transfers are charged. This sandbox simulates the 80/20 revenue split, double-entry ledger settlement, and immutable DPDP licensing records for the marketplace.
           </p>
         </div>
       </div>
@@ -135,7 +156,7 @@ export const MockCheckoutPage: React.FC = () => {
               </p>
               <div className="flex items-center space-x-2 text-[11px] text-slate-500">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Non-exclusive Commercial License (v1.0)</span>
+                <span>Commercial Dataset License (v1.0)</span>
               </div>
             </div>
 
@@ -147,7 +168,33 @@ export const MockCheckoutPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 80/20 Transparent Settlement Breakdown */}
+          {/* AI Model Training Scope Card */}
+          <div className={`p-4 rounded-xl border text-xs space-y-1.5 ${
+            checkoutInfo?.ai_training_allowed
+              ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
+              : 'bg-amber-50/50 border-amber-200 text-amber-900'
+          }`}>
+            <div className="flex items-center gap-2 font-bold">
+              {checkoutInfo?.ai_training_allowed ? (
+                <>
+                  <Bot className="w-4 h-4 text-emerald-600" />
+                  <span>AI Training Rights: GRANTED BY CONTRIBUTOR</span>
+                </>
+              ) : (
+                <>
+                  <Ban className="w-4 h-4 text-amber-600" />
+                  <span>AI Training Rights: EXCLUDED</span>
+                </>
+              )}
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              {checkoutInfo?.ai_training_allowed
+                ? 'The contributor has granted permission to use this dataset for algorithmic model weights, LLM fine-tuning, and machine learning architectures.'
+                : 'The contributor has opted out of AI training use. This dataset may only be used for analytics, reporting, and internal data processing. Neural network training is prohibited under this license.'}
+            </p>
+          </div>
+
+          {/* 80/20 Settlement Breakdown */}
           <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 text-xs space-y-2">
             <h3 className="font-bold text-indigo-950 flex items-center space-x-1.5">
               <Lock className="h-3.5 w-3.5 text-indigo-600" />
@@ -167,6 +214,29 @@ export const MockCheckoutPage: React.FC = () => {
             </div>
           </div>
 
+          {/* DPDP Buyer Commercial License Agreement */}
+          <div className="space-y-2 pt-1">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              Statutory Buyer Licensing Acceptance
+            </h3>
+
+            <ConsentCheckbox
+              id="buyer_license_agreed"
+              checked={buyerAgreementAccepted}
+              onChange={(checked) => {
+                setBuyerAgreementAccepted(checked);
+                if (checked) setAgreementError('');
+              }}
+              label="Buyer Commercial License Agreement"
+              summary="I agree to the non-exclusive dataset commercial license terms, prohibition against re-identification of anonymized data principals, and intellectual property conditions."
+              document={activeDocs['buyer_license_agreement']}
+              documentPurposeCode="buyer_license_agreement"
+              required={true}
+              error={agreementError}
+            />
+          </div>
+
           {/* Simulation Controls */}
           <div className="space-y-3 pt-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
@@ -176,14 +246,14 @@ export const MockCheckoutPage: React.FC = () => {
             <button
               disabled={processing}
               onClick={() => handleSimulate('paid')}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl shadow flex items-center justify-center space-x-2 transition-colors"
+              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl shadow flex items-center justify-center space-x-2 transition-colors text-sm"
             >
               {processing ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
                   <CheckCircle2 className="h-5 w-5" />
-                  <span>Simulate Successful Payment (${((checkoutInfo?.amount_paise || 0) / 100).toFixed(2)})</span>
+                  <span>Accept Agreement & Pay (${((checkoutInfo?.amount_paise || 0) / 100).toFixed(2)})</span>
                 </>
               )}
             </button>

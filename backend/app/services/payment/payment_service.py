@@ -116,10 +116,37 @@ def process_payment_webhook_event(
         # 6. ISSUE LICENSE RECORD
         existing_license = db.query(License).filter(License.order_id == order.id).first()
         if not existing_license:
+            from app.models.consent import ConsentRecord, ConsentPurpose
+            from app.services.consent.consent_service import ConsentService
+
+            # Look up recorded buyer agreement consent for this order
+            consent_rec = (
+                db.query(ConsentRecord)
+                .filter(
+                    ConsentRecord.order_id == order.id,
+                    ConsentRecord.purpose_code == ConsentPurpose.BUYER_LICENSE_AGREEMENT.value
+                )
+                .order_by(ConsentRecord.created_at.desc())
+                .first()
+            )
+            doc_id = consent_rec.document_id if consent_rec else None
+            doc_sha = consent_rec.document_sha256 if consent_rec else None
+            terms_ver = "1.0"
+            if consent_rec and consent_rec.document:
+                terms_ver = consent_rec.document.version
+            elif not doc_id:
+                active_buyer_doc = ConsentService.get_active_document(db, ConsentPurpose.BUYER_LICENSE_AGREEMENT.value)
+                if active_buyer_doc:
+                    doc_id = active_buyer_doc.id
+                    doc_sha = active_buyer_doc.sha256
+                    terms_ver = active_buyer_doc.version
+
             license_record = License(
                 order_id=order.id,
-                terms_version="1.0",
-                type="non_exclusive_commercial"
+                terms_version=terms_ver,
+                type="non_exclusive_commercial",
+                buyer_agreement_document_id=doc_id,
+                buyer_agreement_sha256=doc_sha
             )
             db.add(license_record)
 

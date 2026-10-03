@@ -30,7 +30,9 @@ sql_app.db
 # Storage directories & uploaded payloads
 backend/storage/uploads/*
 backend/storage/previews/*
+backend/storage/evidence/*
 !backend/storage/.gitkeep
+storage/
 
 # IDE & OS
 .vscode/

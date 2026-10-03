@@ -7,3 +7,9 @@ from app.models.listing import Listing  # noqa
 from app.models.order import Order, Payment, License  # noqa
 from app.models.ledger import LedgerEntry, Wallet, PayoutRequest  # noqa
 from app.models.audit import Flag, DownloadLog, AuditLog  # noqa
+from app.models.consent import (  # noqa
+    ConsentDocument,
+    ConsentRecord,
+    TakedownRequest,
+    DeletionRequest,
+)

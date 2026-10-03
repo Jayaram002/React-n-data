@@ -713,6 +713,167 @@ def seed_database(db: Session) -> None:
     ))
     db.commit()
 
+    print(" [6/6] Seeding DPDP Consent Framework & Moderation Queue Samples...")
+    from app.services.consent.consent_service import ConsentService
+    from app.models.consent import (
+        ConsentDocument,
+        ConsentRecord,
+        ConsentPurpose,
+        TakedownRequest,
+        DeletionRequest,
+        TakedownStatus,
+        DeletionRequestStatus,
+    )
+
+    # 1. Seed active v1 consent documents
+    ConsentService.seed_default_documents(db)
+
+    # 2. Update existing users with DPDP age confirmation and accepted versions
+    all_users = db.query(User).all()
+    for u in all_users:
+        u.terms_accepted_version = "1.0"
+        u.privacy_accepted_version = "1.0"
+        u.is_adult_confirmed = True
+    db.commit()
+
+    # 3. Backfill legacy uploads with immutable consent records
+    backfilled_count = ConsentService.backfill_legacy_consents(db)
+    print(f" -> Backfilled {backfilled_count} legacy consent records")
+
+    # 4. Seed 3 distinct uploads in the Moderation Queue
+    # Upload A: contains personal data with lawful basis + evidence file
+    storage = get_storage_service()
+    evidence_content = b"%PDF-1.4 Mock IRB Consent Approval Document for Clinical Trial #2024-ONC-09."
+    evidence_key = "evidence/seed_irb_approval_protocol_2024.pdf"
+    storage.save_file(evidence_content, evidence_key)
+
+    c1 = contributors[1]
+    health_cat = db.query(Category).filter(Category.slug == "health").first()
+
+    upload_a = Upload(
+        contributor_id=c1.id,
+        title="Clinical Patient Oncology Vitals Telemetry",
+        description="Longitudinal vital signs of consenting adult oncology patients in Mumbai research clinic.",
+        status=UploadStatus.FLAGGED,
+        category_id=health_cat.id if health_cat else None,
+        category_source=CategorySource.CONTRIBUTOR,
+        price_paise=950000,
+        ai_training_allowed=False,
+        consent_version="1.0",
+        consent_at=datetime.now(timezone.utc),
+        personal_data_status="contains_personal_data",
+        lawful_basis="consent",
+        lawful_basis_note="Direct voluntary research participants consent forms on file under IRB protocol #2024-ONC-09.",
+        evidence_storage_key=evidence_key,
+        created_at=datetime.now(timezone.utc) - timedelta(hours=3)
+    )
+    db.add(upload_a)
+    db.flush()
+
+    flag_a = Flag(
+        upload_id=upload_a.id,
+        reason="Contributor attested personal data with lawful basis 'consent'. Moderation required before listing.",
+        source="system",
+        status=FlagStatus.OPEN
+    )
+    db.add(flag_a)
+
+    # Record consent records for upload_a
+    for pcode in [ConsentPurpose.CONTRIBUTOR_RIGHTS_WARRANTY.value, ConsentPurpose.PLATFORM_LISTING_LICENSE.value, ConsentPurpose.THIRD_PARTY_DATA_ATTESTATION.value]:
+        doc = ConsentService.get_active_document(db, pcode)
+        if doc:
+            ConsentService.record_consent(db, user_id=c1.id, upload_id=upload_a.id, purpose_code=pcode, document_id=doc.id, document_sha256=doc.sha256, action="granted")
+
+    # Upload B: Discrepancy (attested 'none' but PII detected)
+    c2 = contributors[2]
+    upload_b = Upload(
+        contributor_id=c2.id,
+        title="E-Commerce Customer Retail Transaction History",
+        description="Sample retail purchasing habits across Indian metro areas.",
+        status=UploadStatus.FLAGGED,
+        price_paise=400000,
+        ai_training_allowed=True,
+        consent_version="1.0",
+        consent_at=datetime.now(timezone.utc),
+        personal_data_status="none", # Attested none
+        lawful_basis=None,
+        created_at=datetime.now(timezone.utc) - timedelta(hours=5)
+    )
+    db.add(upload_b)
+    db.flush()
+
+    flag_b = Flag(
+        upload_id=upload_b.id,
+        reason="Discrepancy: Contributor attested personal data is 'none', but email, phone_number was detected.",
+        source="system",
+        status=FlagStatus.OPEN
+    )
+    db.add(flag_b)
+
+    for pcode in [ConsentPurpose.CONTRIBUTOR_RIGHTS_WARRANTY.value, ConsentPurpose.PLATFORM_LISTING_LICENSE.value, ConsentPurpose.THIRD_PARTY_DATA_ATTESTATION.value, ConsentPurpose.AI_TRAINING_USE.value]:
+        doc = ConsentService.get_active_document(db, pcode)
+        if doc:
+            ConsentService.record_consent(db, user_id=c2.id, upload_id=upload_b.id, purpose_code=pcode, document_id=doc.id, document_sha256=doc.sha256, action="granted")
+
+    # Upload C: Sensitive Domain (Finance) requiring moderation
+    c3 = contributors[3]
+    fin_cat = db.query(Category).filter(Category.slug == "finance").first()
+    upload_c = Upload(
+        contributor_id=c3.id,
+        title="Interbank Lending Rate & FX Settlement Logs",
+        description="Microsecond tick-level interbank exchange rates and liquidity flows.",
+        status=UploadStatus.FLAGGED,
+        category_id=fin_cat.id if fin_cat else None,
+        category_source=CategorySource.AI,
+        price_paise=800000,
+        ai_training_allowed=False,
+        consent_version="1.0",
+        consent_at=datetime.now(timezone.utc),
+        personal_data_status="anonymized",
+        lawful_basis="legitimate_uses",
+        lawful_basis_note="Synthetic financial time series aggregated from public interbank quotes.",
+        created_at=datetime.now(timezone.utc) - timedelta(hours=8)
+    )
+    db.add(upload_c)
+    db.flush()
+
+    flag_c = Flag(
+        upload_id=upload_c.id,
+        reason="Upload routed to sensitive domain 'finance'. DPDP compliance requires admin moderation before listing.",
+        source="system",
+        status=FlagStatus.OPEN
+    )
+    db.add(flag_c)
+
+    for pcode in [ConsentPurpose.CONTRIBUTOR_RIGHTS_WARRANTY.value, ConsentPurpose.PLATFORM_LISTING_LICENSE.value, ConsentPurpose.THIRD_PARTY_DATA_ATTESTATION.value]:
+        doc = ConsentService.get_active_document(db, pcode)
+        if doc:
+            ConsentService.record_consent(db, user_id=c3.id, upload_id=upload_c.id, purpose_code=pcode, document_id=doc.id, document_sha256=doc.sha256, action="granted")
+
+    # 5. Seed 1 Takedown Request and 1 Deletion Request
+    target_up = db.query(Upload).filter(Upload.status == UploadStatus.PUBLISHED).first()
+    if target_up:
+        takedown = TakedownRequest(
+            upload_id=target_up.id,
+            claimant_name="Starlight Analytics Legal Team",
+            claimant_email="legal@starlightanalytics.io",
+            reason="copyright",
+            details="Dataset incorporates proprietary satellite metrics owned by Starlight Analytics without authorization.",
+            status=TakedownStatus.PENDING
+        )
+        db.add(takedown)
+
+    del_user = contributors[4]
+    del_req = DeletionRequest(
+        user_id=del_user.id,
+        status=DeletionRequestStatus.PENDING,
+        reason="Account closure and data principal erasure requested under Section 12 DPDP Act."
+    )
+    db.add(del_req)
+
+    db.commit()
+    print(" -> Seeded 3 moderation uploads (evidence, discrepancy, sensitive domain), 1 takedown request, 1 erasure request.")
+
     print(f" SUCCESS: Seeded {len(DATASET_DEFINITIONS)} multi-domain datasets, 3 agencies, 5 contributors, paid orders, and active listings!")
 
 if __name__ == "__main__":

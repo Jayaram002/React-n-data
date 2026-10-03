@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.category import Category
-from app.core.database import Base, engine
+from app.core.database import engine
+from app.db.base import Base
 
 SEED_TAXONOMY = [
     {

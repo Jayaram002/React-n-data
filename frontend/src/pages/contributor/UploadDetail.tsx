@@ -8,6 +8,7 @@ import {
   FileText, Image as ImageIcon, Database, Sparkles, 
   DollarSign, Tag, Lightbulb, HelpCircle, Layers, Check, Loader2, X 
 } from 'lucide-react';
+import { ConsentRightsPanel } from '../../features/consent/ConsentRightsPanel';
 
 export const ContributorUploadDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -657,6 +658,9 @@ export const ContributorUploadDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* DPDP Consent & Legal Rights Panel */}
+      {upload && <ConsentRightsPanel upload={upload} onUpdated={loadData} />}
 
       {/* Category Change Modal */}
       {showCategoryModal && (

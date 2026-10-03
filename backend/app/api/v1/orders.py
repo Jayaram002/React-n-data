@@ -20,9 +20,16 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_in: OrderCreate,
+    request: Request,
     current_user: User = Depends(require_roles([UserRole.AGENCY, UserRole.CONTRIBUTOR, UserRole.ADMIN])),
     db: Session = Depends(get_db)
 ):
+    if order_in.buyer_agreement_accepted is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must review and accept the Buyer License Agreement before creating an order"
+        )
+
     listing = db.query(Listing).filter(Listing.id == order_in.listing_id).first()
     if not listing or listing.status != ListingStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active listing not found")
@@ -35,6 +42,14 @@ def create_order(
     if upload.contributor_id == current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot purchase your own listing")
 
+    from app.services.consent.consent_service import ConsentService
+    from app.models.consent import ConsentPurpose
+
+    active_buyer_doc = ConsentService.get_active_document(db, ConsentPurpose.BUYER_LICENSE_AGREEMENT.value)
+    if not active_buyer_doc:
+        ConsentService.seed_default_documents(db)
+        active_buyer_doc = ConsentService.get_active_document(db, ConsentPurpose.BUYER_LICENSE_AGREEMENT.value)
+
     order = Order(
         buyer_id=current_user.id,
         listing_id=listing.id,
@@ -42,6 +57,24 @@ def create_order(
         status=OrderStatus.AWAITING_PAYMENT
     )
     db.add(order)
+    db.flush()
+
+    # Record append-only immutable consent record for buyer license agreement
+    ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    if active_buyer_doc:
+        ConsentService.record_consent(
+            db=db,
+            user_id=current_user.id,
+            order_id=order.id,
+            purpose_code=ConsentPurpose.BUYER_LICENSE_AGREEMENT.value,
+            document_id=active_buyer_doc.id,
+            document_sha256=active_buyer_doc.sha256,
+            action="granted",
+            ip=ip,
+            user_agent=user_agent
+        )
+
     db.commit()
     db.refresh(order)
 

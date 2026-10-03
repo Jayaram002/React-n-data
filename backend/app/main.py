@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
+from app.api.v1.consent import router as consent_router
 from app.db.init_db import init_db
 from app.db import base as db_base
 from app.core.database import SessionLocal
@@ -29,6 +30,7 @@ def startup_db_client():
         db.close()
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(consent_router)  # Direct mounts for /consent/... and /takedown-requests
 
 @app.get("/health")
 def health_check():

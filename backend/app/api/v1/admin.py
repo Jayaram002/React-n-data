@@ -52,6 +52,9 @@ def get_moderation_queue(
         .all()
     )
 
+    from app.models.consent import ConsentRecord
+    from app.services.storage import get_storage_service
+
     items = []
     for u in uploads:
         flags = db.query(Flag).filter(Flag.upload_id == u.id, Flag.status == FlagStatus.OPEN).all()
@@ -66,6 +69,27 @@ def get_moderation_queue(
             data_type_str = u.file_info.data_type.value if hasattr(u.file_info.data_type, "value") else str(u.file_info.data_type)
 
         score = u.ai_analysis.total_score if u.ai_analysis else None
+
+        # Fetch consent history for this upload
+        consent_recs = (
+            db.query(ConsentRecord)
+            .filter(ConsentRecord.upload_id == u.id)
+            .order_by(ConsentRecord.created_at.desc())
+            .all()
+        )
+        consent_data = [
+            {
+                "purpose_code": cr.purpose_code,
+                "action": cr.action,
+                "created_at": cr.created_at.isoformat(),
+                "document_sha256": cr.document_sha256[:10] + "..." if cr.document_sha256 else "",
+                "ip": cr.ip
+            }
+            for cr in consent_recs
+        ]
+
+        has_ev = bool(u.evidence_storage_key)
+        ev_url = f"/api/v1/admin/uploads/{u.id}/evidence" if has_ev else None
 
         items.append(
             ModerationItemOut(
@@ -87,11 +111,43 @@ def get_moderation_queue(
                 flags_count=len(flags),
                 open_flags=flags_data,
                 ai_total_score=score,
+                personal_data_status=u.personal_data_status or "none",
+                lawful_basis=u.lawful_basis,
+                lawful_basis_note=u.lawful_basis_note,
+                has_evidence=has_ev,
+                evidence_download_url=ev_url,
+                consent_records=consent_data,
                 created_at=u.created_at
             )
         )
 
     return items
+
+@router.get("/uploads/{upload_id}/evidence")
+def download_evidence_file(
+    upload_id: int,
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    db: Session = Depends(get_db)
+):
+    from fastapi import Response
+    from app.services.storage import get_storage_service
+
+    upload = db.query(Upload).filter(Upload.id == upload_id).first()
+    if not upload or not upload.evidence_storage_key:
+        raise HTTPException(status_code=404, detail="No evidence file found for this upload")
+
+    storage_service = get_storage_service()
+    try:
+        data = storage_service.get_file(upload.evidence_storage_key)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Evidence file missing in storage")
+
+    ext = upload.evidence_storage_key.split(".")[-1] if "." in upload.evidence_storage_key else "bin"
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="evidence_upload_{upload_id}.{ext}"'}
+    )
 
 @router.post("/moderation/uploads/{upload_id}/action", response_model=Dict[str, Any])
 def execute_moderation_action(
@@ -130,7 +186,6 @@ def execute_moderation_action(
             upload.ai_min_price = pricing["ai_min_price_paise"]
             upload.ai_max_price = pricing["ai_max_price_paise"]
 
-
         upload.status = UploadStatus.ANALYZED
 
         # Resolve open flags on this upload
@@ -150,6 +205,18 @@ def execute_moderation_action(
         db.add(flag)
 
         # Deactivate listing if active
+        if upload.listing:
+            upload.listing.status = ListingStatus.INACTIVE
+
+    elif action == "request_evidence":
+        upload.status = UploadStatus.FLAGGED
+        flag = Flag(
+            upload_id=upload.id,
+            reason=action_in.reason or "Admin requested evidence of lawful basis / consent documentation",
+            source="admin",
+            status=FlagStatus.OPEN
+        )
+        db.add(flag)
         if upload.listing:
             upload.listing.status = ListingStatus.INACTIVE
 
@@ -175,6 +242,7 @@ def execute_moderation_action(
     )
     db.add(audit)
     db.commit()
+    db.refresh(upload)
 
     return {"status": "success", "action": action, "upload_id": upload.id, "upload_status": upload.status.value}
 

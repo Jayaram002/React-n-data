@@ -28,7 +28,11 @@ def execute_upload_pipeline(
     ai_training_allowed: bool,
     consent_version: str,
     filename: str,
-    file_bytes: bytes
+    file_bytes: bytes,
+    personal_data_status: str = "none",
+    lawful_basis: Optional[str] = None,
+    lawful_basis_note: Optional[str] = None,
+    evidence_storage_key: Optional[str] = None
 ) -> Upload:
     # 1. Malware & Safety Scans
     malware_result = SecurityScannerService.scan_malware(file_bytes, filename)
@@ -49,7 +53,6 @@ def execute_upload_pipeline(
     dup_reason = ""
 
     if data_type == DataType.IMAGE and processed.get("phash"):
-        # Check matching phash from different contributor
         dup_file = (
             db.query(UploadFile)
             .join(Upload, Upload.id == UploadFile.upload_id)
@@ -78,14 +81,21 @@ def execute_upload_pipeline(
 
     # Check PII for Tabular
     has_pii = False
+    pii_summary = ""
     if data_type == DataType.TABULAR and processed.get("pii_results", {}).get("pii_detected"):
         has_pii = True
+        pii_summary = ", ".join(processed["pii_results"].get("pii_types", []))
 
-    # 4. Determine Initial Status
+    # Check Face / Plate detection for Images
+    has_face_or_plate = False
+    if data_type == DataType.IMAGE:
+        lower_name = filename.lower()
+        if any(term in lower_name for term in ["face", "plate", "license_plate", "portrait", "person", "selfie"]):
+            has_face_or_plate = True
+
+    # 4. Determine Initial Status under DPDP Act / Rules 2025
     initial_status = UploadStatus.UPLOADED
-    if is_duplicate:
-        initial_status = UploadStatus.FLAGGED
-    elif has_pii:
+    if is_duplicate or has_pii or has_face_or_plate or personal_data_status == "contains_personal_data":
         initial_status = UploadStatus.FLAGGED
 
     # 5. Create Database Upload Record
@@ -96,7 +106,11 @@ def execute_upload_pipeline(
         status=initial_status,
         category_source=CategorySource.AI,
         ai_training_allowed=ai_training_allowed,
-        consent_version=consent_version
+        consent_version=consent_version,
+        personal_data_status=personal_data_status,
+        lawful_basis=lawful_basis,
+        lawful_basis_note=lawful_basis_note,
+        evidence_storage_key=evidence_storage_key
     )
     db.add(upload)
     db.flush()
@@ -129,7 +143,7 @@ def execute_upload_pipeline(
     )
     db.add(upload_file)
 
-    # 8. Create Flag records if duplicate or PII
+    # 8. Create Flag records if duplicate, PII, face/plate, or personal data declaration
     if is_duplicate:
         flag = Flag(
             upload_id=upload.id,
@@ -139,11 +153,30 @@ def execute_upload_pipeline(
         )
         db.add(flag)
 
-    if has_pii:
-        pii_details = ", ".join(processed["pii_results"].get("pii_types", []))
+    if has_pii or has_face_or_plate:
+        hit_desc = pii_summary if has_pii else "face/plate visual identifier"
+        if personal_data_status in ("none", "anonymized"):
+            # Discrepancy flag
+            flag = Flag(
+                upload_id=upload.id,
+                reason=f"Discrepancy: Contributor attested personal data is '{personal_data_status}', but {hit_desc} was detected.",
+                source="system",
+                status=FlagStatus.OPEN
+            )
+            db.add(flag)
+        else:
+            flag = Flag(
+                upload_id=upload.id,
+                reason=f"Personal data detected ({hit_desc}). Sent to admin moderation queue.",
+                source="system",
+                status=FlagStatus.OPEN
+            )
+            db.add(flag)
+
+    if personal_data_status == "contains_personal_data":
         flag = Flag(
             upload_id=upload.id,
-            reason=f"PII detected in tabular dataset: {pii_details}. Requires contributor confirmation/removal.",
+            reason=f"Contributor attested personal data with lawful basis '{lawful_basis or 'unspecified'}'. Moderation required before listing.",
             source="system",
             status=FlagStatus.OPEN
         )

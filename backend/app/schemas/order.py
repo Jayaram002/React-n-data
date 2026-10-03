@@ -6,12 +6,16 @@ from app.schemas.listing import ListingItemOut
 
 class OrderCreate(BaseModel):
     listing_id: int
+    buyer_agreement_accepted: Optional[bool] = None
+    buyer_agreement_version: Optional[str] = None
 
 class LicenseOut(BaseModel):
     id: int
     order_id: int
     terms_version: str
     type: str
+    buyer_agreement_document_id: Optional[int] = None
+    buyer_agreement_sha256: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

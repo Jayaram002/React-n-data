@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -21,6 +21,10 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(Enum(UserRole), nullable=False)
     status = Column(Enum(UserStatus), default=UserStatus.ACTIVE, nullable=False)
+    terms_accepted_version = Column(String(20), nullable=True)
+    privacy_accepted_version = Column(String(20), nullable=True)
+    is_adult_confirmed = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     contributor_profile = relationship("ContributorProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

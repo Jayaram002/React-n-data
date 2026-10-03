@@ -8,6 +8,11 @@ class UserRegister(BaseModel):
     role: UserRole
     display_name: Optional[str] = None # for contributor
     company_name: Optional[str] = None # for agency
+    terms_accepted: Optional[bool] = None
+    privacy_accepted: Optional[bool] = None
+    terms_accepted_version: Optional[str] = None
+    privacy_accepted_version: Optional[str] = None
+    is_adult_confirmed: Optional[bool] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -41,6 +46,9 @@ class UserOut(BaseModel):
     email: str
     role: UserRole
     status: UserStatus
+    terms_accepted_version: Optional[str] = None
+    privacy_accepted_version: Optional[str] = None
+    is_adult_confirmed: bool = False
     contributor_profile: Optional[ContributorProfileOut] = None
     agency_profile: Optional[AgencyProfileOut] = None
 

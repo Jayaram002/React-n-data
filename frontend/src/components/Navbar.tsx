@@ -52,6 +52,11 @@ export const Navbar: React.FC = () => {
                   <span>Purchases</span>
                 </Link>
 
+                <Link to="/account/privacy" className="text-slate-600 hover:text-indigo-600 font-medium text-sm flex items-center space-x-1" title="DPDP Privacy & Rights">
+                  <Shield className="h-4 w-4 text-emerald-600" />
+                  <span>Privacy Rights</span>
+                </Link>
+
                 {user.role === 'admin' && (
                   <div className="flex items-center space-x-4 pl-2 border-l border-slate-200">
                     <Link to="/admin/moderation" className="text-slate-600 hover:text-indigo-600 font-medium text-sm flex items-center space-x-1">
