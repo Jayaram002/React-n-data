@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ordersApi } from '../../api/client';
+import { ordersApi, formatErrorMessage } from '../../api/client';
 import { Order } from '../../types';
 import { 
   ShoppingBag, Download, ShieldCheck, CheckCircle2, Clock, 
@@ -37,7 +37,7 @@ export const PurchasesPage: React.FC = () => {
       const filename = `${cleanTitle}_order_${orderId}.${ext}`;
       await ordersApi.downloadFile(orderId, filename);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Download failed. Ensure your order is paid and authorized.');
+      alert(formatErrorMessage(err, 'Download failed. Ensure your order is paid and authorized.'));
     } finally {
       setDownloadingId(null);
     }

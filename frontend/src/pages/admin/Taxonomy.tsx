@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { adminApi, categoriesApi } from '../../api/client';
+import { adminApi, categoriesApi, formatErrorMessage } from '../../api/client';
 import { CategoryTree } from '../../types';
 import { 
   FolderPlus, Edit3, Plus, CheckCircle2, XCircle, 
@@ -68,7 +68,7 @@ export const AdminTaxonomyPage: React.FC = () => {
       await fetchTaxonomy();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Category save failed');
+      alert(formatErrorMessage(err, 'Category save failed'));
     } finally {
       setSubmitting(false);
     }
@@ -104,7 +104,7 @@ export const AdminTaxonomyPage: React.FC = () => {
       await fetchTaxonomy();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Subcategory save failed');
+      alert(formatErrorMessage(err, 'Subcategory save failed'));
     } finally {
       setSubmitting(false);
     }

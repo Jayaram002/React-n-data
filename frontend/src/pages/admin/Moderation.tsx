@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { adminApi, categoriesApi } from '../../api/client';
+import { adminApi, categoriesApi, formatErrorMessage } from '../../api/client';
 import { ModerationItem, CategoryTree } from '../../types';
 import { 
   Shield, AlertTriangle, CheckCircle2, XCircle, Tag, 
@@ -58,7 +58,7 @@ export const AdminModerationPage: React.FC = () => {
       await fetchQueue();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Moderation action failed');
+      alert(formatErrorMessage(err, 'Moderation action failed'));
     } finally {
       setSubmitting(false);
     }

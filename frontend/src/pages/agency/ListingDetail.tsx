@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { listingsApi, ordersApi } from '../../api/client';
+import { listingsApi, ordersApi, formatErrorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { ListingDetail } from '../../types';
 import { 
@@ -55,7 +55,7 @@ export const ListingDetailPage: React.FC = () => {
       const order = await ordersApi.createOrder(listing.id);
       navigate(`/mock-checkout/${order.id}`);
     } catch (err: any) {
-      setPurchaseError(err.response?.data?.detail || 'Failed to initialize order checkout');
+      setPurchaseError(formatErrorMessage(err, 'Failed to initialize order checkout'));
     } finally {
       setPurchasing(false);
     }

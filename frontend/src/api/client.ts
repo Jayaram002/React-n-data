@@ -57,6 +57,34 @@ apiClient.interceptors.response.use(
   }
 );
 
+export function formatErrorMessage(err: any, fallback: string = 'An error occurred'): string {
+  if (!err) return fallback;
+  const detail = err.response?.data?.detail;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item: any) => {
+        if (typeof item === 'string') return item;
+        if (item?.msg) {
+          const field = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : '';
+          return field && field !== 'body' ? `${field}: ${item.msg}` : item.msg;
+        }
+        return JSON.stringify(item);
+      })
+      .join(', ');
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || JSON.stringify(detail);
+  }
+  if (err.message) {
+    return err.message;
+  }
+  return fallback;
+}
+
+
 export const authApi = {
   register: async (payload: any) => {
     const res = await apiClient.post<User>('/auth/register', payload);

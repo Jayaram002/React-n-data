@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { earningsApi, payoutsApi } from '../../api/client';
+import { earningsApi, payoutsApi, formatErrorMessage } from '../../api/client';
 import { ContributorEarningsSummary, PayoutRequest } from '../../types';
 import { 
   DollarSign, Clock, ArrowUpRight, ArrowDownLeft, ShieldCheck, 
@@ -100,7 +100,7 @@ export const ContributorEarningsPage: React.FC = () => {
       await fetchEarnings();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      setFormError(err.response?.data?.detail || 'Failed to submit payout request');
+      setFormError(formatErrorMessage(err, 'Failed to submit payout request'));
     } finally {
       setSubmittingPayout(false);
     }
@@ -113,7 +113,7 @@ export const ContributorEarningsPage: React.FC = () => {
       await fetchEarnings();
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to process payout');
+      alert(formatErrorMessage(err, 'Failed to process payout'));
     }
   };
 

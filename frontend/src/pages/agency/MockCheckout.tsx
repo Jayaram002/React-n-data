@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { mockPaymentsApi } from '../../api/client';
+import { mockPaymentsApi, formatErrorMessage } from '../../api/client';
 import { MockCheckoutInfo } from '../../types';
 import { 
   CreditCard, ShieldCheck, AlertTriangle, CheckCircle2, 
@@ -24,7 +24,7 @@ export const MockCheckoutPage: React.FC = () => {
         const data = await mockPaymentsApi.getCheckoutDetails(Number(orderId));
         setCheckoutInfo(data);
       } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to load checkout details');
+        setError(formatErrorMessage(err, 'Failed to load checkout details'));
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ export const MockCheckoutPage: React.FC = () => {
         }, 1000);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Simulation request failed');
+      setError(formatErrorMessage(err, 'Simulation request failed'));
     } finally {
       setProcessing(false);
     }

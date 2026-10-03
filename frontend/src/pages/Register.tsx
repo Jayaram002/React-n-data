@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api/client';
+import { authApi, formatErrorMessage } from '../api/client';
 import { Role } from '../types';
 import { Lock, Mail, User, Building, AlertCircle, Database, ShieldCheck } from 'lucide-react';
 
@@ -22,17 +22,21 @@ export const Register: React.FC = () => {
     setError('');
     setLoading(true);
 
+    const cleanEmail = email.trim();
+    const cleanDisplayName = displayName.trim();
+    const cleanCompanyName = companyName.trim();
+
     try {
       await authApi.register({
-        email,
+        email: cleanEmail,
         password,
         role,
-        display_name: role === 'contributor' ? displayName : undefined,
-        company_name: role === 'agency' ? companyName : undefined,
+        display_name: role === 'contributor' ? (cleanDisplayName || undefined) : undefined,
+        company_name: role === 'agency' ? (cleanCompanyName || undefined) : undefined,
       });
 
       // Auto-login after registration
-      const tokenRes = await authApi.login({ email, password });
+      const tokenRes = await authApi.login({ email: cleanEmail, password });
       await login(tokenRes.access_token, tokenRes.refresh_token);
 
       if (role === 'contributor') {
@@ -45,7 +49,7 @@ export const Register: React.FC = () => {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please check input.');
+      setError(formatErrorMessage(err, 'Registration failed. Please check your inputs.'));
     } finally {
       setLoading(false);
     }

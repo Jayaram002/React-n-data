@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadsApi } from '../../api/client';
+import { uploadsApi, formatErrorMessage } from '../../api/client';
 import { 
   UploadCloud, FileText, Image as ImageIcon, AlertCircle, 
   CheckCircle2, Info, ShieldCheck, Loader2 
@@ -72,7 +72,7 @@ export const ContributorUpload: React.FC = () => {
       });
       navigate(`/contributor/uploads/${uploaded.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Upload failed. Please check file format and try again.');
+      setError(formatErrorMessage(err, 'Upload failed. Please check file format and try again.'));
       setIsUploading(false);
     }
   };

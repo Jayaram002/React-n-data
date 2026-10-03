@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api/client';
+import { authApi, formatErrorMessage } from '../api/client';
 import { Lock, Mail, AlertCircle, Database } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -18,8 +18,10 @@ export const Login: React.FC = () => {
     setError('');
     setLoading(true);
 
+    const cleanEmail = email.trim();
+
     try {
-      const tokenRes = await authApi.login({ email, password });
+      const tokenRes = await authApi.login({ email: cleanEmail, password });
       await login(tokenRes.access_token, tokenRes.refresh_token);
       
       const userRes = await authApi.getMe();
@@ -33,7 +35,7 @@ export const Login: React.FC = () => {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to sign in. Check your credentials.');
+      setError(formatErrorMessage(err, 'Failed to sign in. Check your credentials.'));
     } finally {
       setLoading(false);
     }

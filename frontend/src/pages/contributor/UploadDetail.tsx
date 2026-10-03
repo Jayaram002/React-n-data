@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { uploadsApi, categoriesApi } from '../../api/client';
+import { uploadsApi, categoriesApi, formatErrorMessage } from '../../api/client';
 import { Upload, AIAnalysis, CategoryTree } from '../../types';
 import { 
   ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, 
@@ -68,7 +68,7 @@ export const ContributorUploadDetail: React.FC = () => {
       setPriceSuccess('Price successfully updated within AI recommended range!');
       setTimeout(() => setPriceSuccess(''), 4000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to update price');
+      setError(formatErrorMessage(err, 'Failed to update price'));
     } finally {
       setSavingPrice(false);
     }
@@ -87,7 +87,7 @@ export const ContributorUploadDetail: React.FC = () => {
       setTimeout(() => setCategorySuccess(''), 5000);
       loadData();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to request category change');
+      setError(formatErrorMessage(err, 'Failed to request category change'));
     } finally {
       setSavingCategory(false);
     }
@@ -106,7 +106,7 @@ export const ContributorUploadDetail: React.FC = () => {
       setPublishStatusMessage('Dataset successfully published to Agency Marketplace!');
       setTimeout(() => setPublishStatusMessage(''), 5000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to publish dataset');
+      setError(formatErrorMessage(err, 'Failed to publish dataset'));
     } finally {
       setIsPublishing(false);
     }
@@ -122,7 +122,7 @@ export const ContributorUploadDetail: React.FC = () => {
       setPublishStatusMessage('Dataset unpublished from Marketplace.');
       setTimeout(() => setPublishStatusMessage(''), 5000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to unpublish dataset');
+      setError(formatErrorMessage(err, 'Failed to unpublish dataset'));
     } finally {
       setIsPublishing(false);
     }
