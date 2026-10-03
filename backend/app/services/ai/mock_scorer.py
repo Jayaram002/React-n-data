@@ -7,55 +7,94 @@ DOMAIN_KEYWORDS = {
     "physics": {
         "domain": "physics",
         "subs": {
-            "physics-mechanics": ["velocity", "acceleration", "motion", "force", "mechanics", "sensor", "kinetic"],
-            "physics-optics": ["light", "laser", "photon", "optics", "refraction", "wavelength"],
-            "physics-quantum": ["quantum", "spin", "entanglement", "qubit", "electron"],
-            "physics-thermodynamics": ["temperature", "heat", "entropy", "thermal", "thermo"],
-            "physics-astrophysics": ["galaxy", "star", "solar", "astronomy", "cosmic", "telescope", "flare", "orbit"]
+            "physics-mechanics": ["velocity", "acceleration", "motion", "force", "mechanics", "sensor", "kinetic", "gravity", "torque"],
+            "physics-optics": ["light", "laser", "photon", "optics", "refraction", "wavelength", "lens", "spectrum"],
+            "physics-quantum": ["quantum", "spin", "entanglement", "qubit", "electron", "particle", "schrodinger"],
+            "physics-thermodynamics": ["temperature", "heat", "entropy", "thermal", "thermo", "pressure", "enthalpy"],
+            "physics-astrophysics": ["galaxy", "star", "solar", "astronomy", "cosmic", "telescope", "flare", "orbit", "planet", "space"]
         }
     },
     "business": {
         "domain": "business",
         "subs": {
-            "business-sales": ["sales", "deal", "revenue", "leads", "funnel", "crm", "order"],
-            "business-marketing": ["campaign", "ad", "marketing", "click", "conversion", "impression"],
-            "business-operations": ["supply", "logistics", "workflow", "operations", "process", "inventory"],
-            "business-hr": ["employee", "salary", "hiring", "talent", "attrition", "payroll", "performance"]
+            "business-sales": ["sales", "deal", "revenue", "leads", "funnel", "crm", "order", "pipeline", "quota"],
+            "business-marketing": ["campaign", "ad", "marketing", "click", "conversion", "impression", "seo", "branding", "audience"],
+            "business-operations": ["supply", "logistics", "workflow", "operations", "process", "inventory", "efficiency", "procurement"],
+            "business-hr": ["employee", "salary", "hiring", "talent", "attrition", "payroll", "performance", "recruitment", "workforce"]
         }
     },
     "food": {
         "domain": "food",
         "subs": {
-            "food-recipes": ["recipe", "ingredient", "dish", "cook", "cuisine", "meal"],
-            "food-nutrition": ["calorie", "nutrition", "protein", "vitamin", "carb", "diet", "fat"],
-            "food-restaurants": ["restaurant", "menu", "dining", "chef", "cafe", "table"],
-            "food-agriculture": ["crop", "harvest", "soil", "agriculture", "farming", "seed"]
+            "food-recipes": ["recipe", "ingredient", "dish", "cook", "cuisine", "meal", "baking", "taste"],
+            "food-nutrition": ["calorie", "nutrition", "protein", "vitamin", "carb", "diet", "fat", "nutrient", "healthy"],
+            "food-restaurants": ["restaurant", "menu", "dining", "chef", "cafe", "table", "food service", "bar"],
+            "food-agriculture": ["crop", "harvest", "soil", "agriculture", "farming", "seed", "yield", "livestock", "fertilizer"]
         }
     },
     "health": {
         "domain": "health",
         "subs": {
-            "health-clinical": ["clinical", "trial", "patient", "disease", "treatment", "hospital"],
-            "health-genomics": ["gene", "dna", "rna", "genomics", "sequencing", "mutation"],
-            "health-public-health": ["epidemic", "vaccine", "outbreak", "public health", "mortality"],
-            "health-fitness": ["workout", "exercise", "heart rate", "steps", "fitness", "sleep"]
+            "health-clinical": ["clinical", "trial", "patient", "disease", "treatment", "hospital", "diagnosis", "medical", "doctor"],
+            "health-genomics": ["gene", "dna", "rna", "genomics", "sequencing", "mutation", "genetic", "genome"],
+            "health-public-health": ["epidemic", "vaccine", "outbreak", "public health", "mortality", "infection", "prevalence"],
+            "health-fitness": ["workout", "exercise", "heart rate", "steps", "fitness", "sleep", "gym", "cardio", "calories burned"]
         }
     },
     "finance": {
         "domain": "finance",
         "subs": {
-            "finance-stock-market": ["stock", "equity", "nasdaq", "share", "candlestick", "dividend"],
-            "finance-banking": ["bank", "loan", "mortgage", "credit", "account", "deposit"],
-            "finance-crypto": ["bitcoin", "crypto", "ethereum", "blockchain", "token", "defi"],
-            "finance-real-estate": ["property", "estate", "housing", "rent", "realty", "tenant"]
+            "finance-stock-market": ["stock", "equity", "nasdaq", "share", "candlestick", "dividend", "nyse", "ticker", "portfolio", "trading"],
+            "finance-banking": ["bank", "loan", "mortgage", "credit", "account", "deposit", "interest rate", "debit", "atm"],
+            "finance-crypto": ["bitcoin", "crypto", "ethereum", "blockchain", "token", "defi", "nft", "btc", "eth", "wallet"],
+            "finance-real-estate": ["property", "estate", "housing", "rent", "realty", "tenant", "mortgage", "home value", "listing"]
+        }
+    },
+    "environment": {
+        "domain": "environment",
+        "subs": {
+            "environment-climate": ["climate", "weather", "temperature", "carbon", "greenhouse", "co2", "emissions", "rainfall", "forecast", "atmosphere"],
+            "environment-pollution": ["pollution", "air quality", "aqi", "waste", "plastic", "toxic", "contaminant", "smog", "water quality"],
+            "environment-biodiversity": ["species", "wildlife", "forest", "ecosystem", "fauna", "flora", "conservation", "habitat", "plants", "animals"]
+        }
+    },
+    "education": {
+        "domain": "education",
+        "subs": {
+            "education-k-12": ["school", "grade", "student", "teacher", "classroom", "curriculum", "k-12", "exam", "homework"],
+            "education-higher-ed": ["university", "college", "degree", "undergraduate", "graduate", "campus", "tuition", "academic", "scholarship"],
+            "education-edtech": ["e-learning", "course", "lms", "online learning", "quiz", "mooc", "tutorial", "skill", "learning platform"]
+        }
+    },
+    "transportation": {
+        "domain": "transportation",
+        "subs": {
+            "transportation-logistics": ["freight", "shipping", "cargo", "delivery", "fleet", "warehouse", "tracking", "container", "supply chain"],
+            "transportation-autonomous-driving": ["autonomous", "lidar", "radar", "self-driving", "lane", "sensor", "vehicle", "telemetry", "adas"],
+            "transportation-public-transit": ["bus", "train", "metro", "subway", "transit", "station", "commute", "passenger", "route", "railway"]
+        }
+    },
+    "retail": {
+        "domain": "retail",
+        "subs": {
+            "retail-e-commerce": ["ecommerce", "e-commerce", "cart", "checkout", "product", "store", "shopify", "amazon", "online shopping", "buyer"],
+            "retail-inventory": ["inventory", "stock", "sku", "warehouse", "shelf", "reorder", "merchandise", "supply", "fulfillment"],
+            "retail-consumer-behavior": ["shopper", "consumer", "basket", "loyalty", "purchase history", "churn", "customer", "behavior", "review", "rating"]
         }
     },
     "technology": {
         "domain": "technology",
         "subs": {
-            "technology-software-engineering": ["software", "code", "github", "bug", "commit", "api"],
-            "technology-aiml-datasets": ["model", "training", "dataset", "annotation", "benchmark", "embedding"],
-            "technology-cybersecurity": ["vulnerability", "malware", "firewall", "cyber", "attack", "exploit"]
+            "technology-software-engineering": ["software", "code", "github", "bug", "commit", "api", "programming", "developer", "repository", "git"],
+            "technology-aiml-datasets": ["model", "training", "dataset", "annotation", "benchmark", "embedding", "neural network", "llm", "ai", "machine learning", "chess", "game", "strategy", "vision", "nlp"],
+            "technology-cybersecurity": ["vulnerability", "malware", "firewall", "cyber", "attack", "exploit", "cve", "threat", "intrusion", "ransomware", "phishing"]
+        }
+    },
+    "other": {
+        "domain": "other",
+        "subs": {
+            "other-general": ["dataset", "data", "records", "table", "collection", "survey", "general"],
+            "other-miscellaneous": ["misc", "miscellaneous", "random", "mixed", "other", "sample"]
         }
     }
 }

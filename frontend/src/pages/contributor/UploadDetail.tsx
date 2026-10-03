@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { uploadsApi, categoriesApi, formatErrorMessage } from '../../api/client';
+import { uploadsApi, categoriesApi, adminApi, formatErrorMessage } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 import { Upload, AIAnalysis, CategoryTree } from '../../types';
 import { 
   ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, 
   FileText, Image as ImageIcon, Database, Sparkles, 
-  DollarSign, Tag, Lightbulb, HelpCircle, Layers, Check, Loader2 
+  DollarSign, Tag, Lightbulb, HelpCircle, Layers, Check, Loader2, X 
 } from 'lucide-react';
 
 export const ContributorUploadDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [upload, setUpload] = useState<Upload | null>(null);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [categories, setCategories] = useState<CategoryTree[]>([]);
@@ -28,6 +30,8 @@ export const ContributorUploadDetail: React.FC = () => {
   const [selectedSubId, setSelectedSubId] = useState<number | undefined>(undefined);
   const [savingCategory, setSavingCategory] = useState(false);
   const [categorySuccess, setCategorySuccess] = useState('');
+
+  const [isApprovingFlag, setIsApprovingFlag] = useState(false);
 
   const loadData = async () => {
     if (!id) return;
@@ -99,12 +103,13 @@ export const ContributorUploadDetail: React.FC = () => {
   const handlePublish = async () => {
     if (!upload) return;
     setIsPublishing(true);
+    setError('');
     setPublishStatusMessage('');
     try {
       const updated = await uploadsApi.publishUpload(upload.id);
       setUpload(updated);
       setPublishStatusMessage('Dataset successfully published to Agency Marketplace!');
-      setTimeout(() => setPublishStatusMessage(''), 5000);
+      setTimeout(() => setPublishStatusMessage(''), 6000);
     } catch (err: any) {
       setError(formatErrorMessage(err, 'Failed to publish dataset'));
     } finally {
@@ -115,6 +120,7 @@ export const ContributorUploadDetail: React.FC = () => {
   const handleUnpublish = async () => {
     if (!upload) return;
     setIsPublishing(true);
+    setError('');
     setPublishStatusMessage('');
     try {
       const updated = await uploadsApi.unpublishUpload(upload.id);
@@ -125,6 +131,26 @@ export const ContributorUploadDetail: React.FC = () => {
       setError(formatErrorMessage(err, 'Failed to unpublish dataset'));
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleAdminApprove = async () => {
+    if (!upload) return;
+    setIsApprovingFlag(true);
+    setError('');
+    try {
+      await adminApi.executeModerationAction(upload.id, {
+        action: 'approve',
+        category_id: upload.category_id || undefined,
+        reason: 'Approved and cleared flags by administrator',
+      });
+      setPublishStatusMessage('Flags resolved! Dataset is now ready for publishing.');
+      await loadData();
+      setTimeout(() => setPublishStatusMessage(''), 5000);
+    } catch (err: any) {
+      setError(formatErrorMessage(err, 'Failed to approve dataset'));
+    } finally {
+      setIsApprovingFlag(false);
     }
   };
 
@@ -171,7 +197,12 @@ export const ContributorUploadDetail: React.FC = () => {
             <p className="text-slate-600 text-sm mt-0.5">{upload?.description}</p>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-xs font-semibold uppercase px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
+            <span className={`text-xs font-semibold uppercase px-3 py-1.5 rounded-full border ${
+              upload?.status === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+              upload?.status === 'flagged' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+              upload?.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+              'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
               Status: {upload?.status}
             </span>
 
@@ -180,7 +211,8 @@ export const ContributorUploadDetail: React.FC = () => {
                 type="button"
                 onClick={handlePublish}
                 disabled={isPublishing || upload?.status === 'flagged' || upload?.status === 'rejected'}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={upload?.status === 'flagged' ? 'Cannot publish while flagged for moderation' : ''}
               >
                 {isPublishing ? 'Publishing...' : 'Publish to Marketplace'}
               </button>
@@ -198,17 +230,85 @@ export const ContributorUploadDetail: React.FC = () => {
         </div>
       </div>
 
-      {priceSuccess && (
-        <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center space-x-2 text-sm">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
-          <span>{priceSuccess}</span>
+      {/* Error & Status Banners */}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError('')} className="p-1 text-red-500 hover:text-red-700">
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
-      {categorySuccess && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl flex items-center space-x-2 text-sm">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-blue-600" />
-          <span>{categorySuccess}</span>
+      {publishStatusMessage && (
+        <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center space-x-2 text-sm shadow-sm">
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+          <span>{publishStatusMessage}</span>
+        </div>
+      )}
+
+      {/* Flagged Status Banner */}
+      {upload?.status === 'flagged' && (
+        <div className="mb-6 bg-amber-50 border border-amber-300 text-amber-900 p-5 rounded-2xl shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-bold text-amber-900">Flagged for Moderation Review</h3>
+                <p className="text-xs text-amber-700 mt-1">
+                  This dataset cannot be published directly because automated pre-checks detected potential policy issues (such as PII or duplicate content).
+                </p>
+                {upload.flags && upload.flags.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {upload.flags.filter(f => f.status === 'open').map(flag => (
+                      <div key={flag.id} className="text-xs bg-amber-100/80 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-lg">
+                        <strong>Reason:</strong> {flag.reason}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {user?.role === 'admin' ? (
+              <button
+                type="button"
+                onClick={handleAdminApprove}
+                disabled={isApprovingFlag}
+                className="self-start sm:self-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-xl shadow-sm whitespace-nowrap transition-colors flex items-center space-x-1.5"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>{isApprovingFlag ? 'Approving...' : 'Admin: Clear Flag & Approve'}</span>
+              </button>
+            ) : (
+              <Link
+                to="/admin/moderation"
+                className="self-start sm:self-center px-3 py-1.5 border border-amber-300 text-amber-800 bg-amber-100/50 hover:bg-amber-100 font-semibold text-xs rounded-lg whitespace-nowrap"
+              >
+                View in Admin Moderation
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Category Missing Alert */}
+      {!upload?.category_id && upload?.status !== 'flagged' && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-900 p-4 rounded-xl flex items-center justify-between text-sm">
+          <div className="flex items-center space-x-2">
+            <Tag className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            <span>Category domain is required before publishing. Please assign a category domain.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCategoryModal(true)}
+            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 shadow-sm"
+          >
+            Assign Category
+          </button>
         </div>
       )}
 
@@ -223,7 +323,12 @@ export const ContributorUploadDetail: React.FC = () => {
                 <div>
                   <div className="flex items-center space-x-2 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-1">
                     <Sparkles className="h-4 w-4 text-amber-400" />
-                    <span>Gemma Hybrid Trust Score</span>
+                    <span>{analysis.model_name?.includes('gemini') ? 'Google Gemini AI Trust Score' : 'Hybrid AI Scorer'}</span>
+                    {analysis.degraded && (
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        Rule Scorer Mode
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-xl font-bold">Overall Data Trust Score</h2>
                   <p className="text-xs text-indigo-200 mt-1 max-w-md">

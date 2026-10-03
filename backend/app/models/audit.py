@@ -21,7 +21,7 @@ class Flag(Base):
     resolved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    upload = relationship("Upload", foreign_keys=[upload_id])
+    upload = relationship("Upload", back_populates="flags", foreign_keys=[upload_id])
     resolver = relationship("User", foreign_keys=[resolved_by])
 
 class DownloadLog(Base):

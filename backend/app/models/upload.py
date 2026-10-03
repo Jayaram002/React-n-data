@@ -53,6 +53,7 @@ class Upload(Base):
     file_info = relationship("UploadFile", back_populates="upload", uselist=False, cascade="all, delete-orphan")
     ai_analysis = relationship("AIAnalysis", back_populates="upload", uselist=False, cascade="all, delete-orphan")
     listing = relationship("Listing", back_populates="upload", uselist=False, cascade="all, delete-orphan")
+    flags = relationship("Flag", back_populates="upload", cascade="all, delete-orphan")
 
 class UploadFile(Base):
     __tablename__ = "upload_files"

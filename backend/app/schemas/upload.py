@@ -20,6 +20,16 @@ class UploadFileOut(BaseModel):
     class Config:
         from_attributes = True
 
+class FlagOut(BaseModel):
+    id: int
+    reason: str
+    source: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class UploadOut(BaseModel):
     id: int
     contributor_id: int
@@ -39,6 +49,7 @@ class UploadOut(BaseModel):
     consent_at: datetime
     created_at: datetime
     file_info: Optional[UploadFileOut] = None
+    flags: List[FlagOut] = []
 
     class Config:
         from_attributes = True

@@ -210,6 +210,8 @@ def request_category_change(
     upload.category_id = cat_in.category_id
     upload.subcategory_id = cat_in.subcategory_id
     upload.category_source = CategorySource.CONTRIBUTOR
+    if upload.status == UploadStatus.HELD_UNCATEGORIZED:
+        upload.status = UploadStatus.ANALYZED
 
     db.commit()
     db.refresh(upload)
@@ -231,23 +233,31 @@ def publish_upload(
     if upload.contributor_id != current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden")
 
-    if upload.status not in (UploadStatus.ANALYZED, UploadStatus.UNPUBLISHED):
+    if upload.status == UploadStatus.FLAGGED:
+        open_flags = [f.reason for f in upload.flags if f.status == FlagStatus.OPEN]
+        flag_details = f" ({'; '.join(open_flags)})" if open_flags else ""
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot publish upload in status '{upload.status}'. Must be analyzed."
+            detail=f"Cannot publish dataset while flagged for moderation review{flag_details}. Please resolve open flags before publishing."
+        )
+
+    if upload.status == UploadStatus.REJECTED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot publish a rejected dataset."
         )
 
     if not upload.category_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot publish upload without an assigned category domain."
+            detail="Please select an assigned Category domain for this dataset before publishing."
         )
 
-    if not upload.price_paise:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot publish upload without a listing price."
-        )
+    if not upload.price_paise or upload.price_paise <= 0:
+        if upload.ai_min_price and upload.ai_min_price > 0:
+            upload.price_paise = upload.ai_min_price
+        else:
+            upload.price_paise = 500000
 
     upload.status = UploadStatus.PUBLISHED
     

@@ -158,6 +158,14 @@ export interface ListingDetail {
   created_at: string;
 }
 
+export interface UploadFlag {
+  id: number;
+  reason: string;
+  source: string;
+  status: 'open' | 'in_review' | 'resolved' | 'dismissed';
+  created_at: string;
+}
+
 export interface Upload {
   id: number;
   contributor_id: number;
@@ -177,6 +185,7 @@ export interface Upload {
   consent_at: string;
   created_at: string;
   file_info?: UploadFile;
+  flags?: UploadFlag[];
 }
 
 export interface License {
