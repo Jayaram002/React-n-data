@@ -2,8 +2,14 @@ import os
 import json
 import re
 from typing import Dict, Any, List, Optional, Tuple
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+try:
+    import google.generativeai as genai
+    from google.generativeai.types import GenerationConfig
+    HAS_GENAI = True
+except ImportError:
+    genai = None
+    GenerationConfig = None
+    HAS_GENAI = False
 
 from app.core.config import settings
 from app.schemas.ai import GemmaClassificationOutput, GemmaScoringOutput
@@ -22,7 +28,7 @@ class GeminiAIService(BaseAIService):
         self.mock_fallback = DeterministicMockScorer()
         
         self.client_ready = False
-        if self.api_key:
+        if self.api_key and HAS_GENAI:
             try:
                 genai.configure(api_key=self.api_key)
                 self.model = genai.GenerativeModel(self.model_name)
